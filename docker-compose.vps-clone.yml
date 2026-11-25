@@ -1,0 +1,46 @@
+# vps-clone (Dokploy) test deployment of kroegha/homelable.
+# Not for upstream: this file lives only on the fork's `deploy` branch.
+# The UI is served on host port 8790 because Dokploy's own UI holds 3000.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SQLITE_PATH: /app/data/homelab.db
+    volumes:
+      - backend_data:/app/data
+    networks:
+      - homelable
+    cap_add:
+      - NET_RAW
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_BASE_PATH: /
+    restart: unless-stopped
+    ports:
+      - "8790:80"
+    depends_on:
+      - backend
+    networks:
+      - homelable
+
+volumes:
+  backend_data:
+
+networks:
+  homelable:
+    driver: bridge
